@@ -97,13 +97,14 @@ class ExpandRepNet(nn.Module):
 
 if __name__ == "__main__":
     from fvcore.nn import FlopCountAnalysis, flop_count_table
-    model = ExpandRepNet(dim=36, ffn_scale=1.5, n_blocks=6).cuda()
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+    model = ExpandRepNet(dim=36, ffn_scale=1.5, n_blocks=6).to(device)
     model.eval()
     print(model)
     state_dict = torch.load('./model_zoo/ExpandRepNet.pth')
     model.load_state_dict(state_dict['params_ema'],True)
     
     #test
-    inputs = (torch.rand(1, 3, 256, 256).cuda(),)
+    inputs = (torch.rand(1, 3, 256, 256).to(device),)
     print(flop_count_table(FlopCountAnalysis(model, inputs)))
 

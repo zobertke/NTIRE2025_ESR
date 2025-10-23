@@ -99,7 +99,7 @@ class RepMBConvSE(nn.Module):
 
         # third step: merge the first 1x1 convolution and the next 3x3 convolution
         merge_k0k1 = F.conv2d(input=k1, weight=k0.permute(1, 0, 2, 3))
-        merge_b0b1 = b0.view(1, -1, 1, 1) * torch.ones(1, 2*n_feat, 3, 3) #.cuda()
+        merge_b0b1 = b0.view(1, -1, 1, 1) * torch.ones(1, 2*n_feat, 3, 3) #.to(device)
         merge_b0b1 = F.conv2d(input=merge_b0b1, weight=k1, bias=b1)       
 
         # third step: merge the remain 1x1 convolution

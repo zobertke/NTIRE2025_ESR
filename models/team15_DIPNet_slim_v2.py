@@ -333,7 +333,7 @@ class DIPNet_slim_v2(nn.Module):
         self.upsampler = pixelshuffle_block_rep1(feature_channels,
                                           out_channels,
                                           upscale_factor=upscale)
-        self.cuda()(torch.randn(1, 3, 256, 256).cuda())
+        self.to(device)(torch.randn(1, 3, 256, 256).to(device))
 
     def forward(self, x):
         out_feature = self.conv_1(x)

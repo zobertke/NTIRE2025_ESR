@@ -225,7 +225,7 @@ class ESPAN(nn.Module):
 
         self.tea_upsampler = pixelshuffle_block(teacher_feature_channels, out_channels, upscale_factor=upscale)
 
-        self.cuda()(torch.randn(1, 3, 512, 512).cuda())
+        self.to(device)(torch.randn(1, 3, 512, 512).to(device))
 
     def forward(self, x):
 

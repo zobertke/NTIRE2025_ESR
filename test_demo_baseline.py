@@ -118,8 +118,14 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
     save_path = os.path.join(args.save_dir, model_name, mode)
     util.mkdir(save_path)
 
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
+    # Use CUDA events for timing if available, otherwise use time.time()
+    if device.type == 'cuda':
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+    else:
+        import time
+        start = None
+        end = None
 
     for i, (img_lr, img_hr) in enumerate(data_path):
 
@@ -134,11 +140,19 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
         # --------------------------------
         # (2) img_sr
         # --------------------------------
-        start.record()
-        img_sr = forward(img_lr, model, tile)
-        end.record()
-        torch.cuda.synchronize()
-        results[f"{mode}_runtime"].append(start.elapsed_time(end))  # milliseconds
+        if device.type == 'cuda':
+            start.record()
+            img_sr = forward(img_lr, model, tile)
+            end.record()
+            torch.cuda.synchronize()
+            results[f"{mode}_runtime"].append(start.elapsed_time(end))  # milliseconds
+        else:
+            start_time = time.time()
+            img_sr = forward(img_lr, model, tile)
+            if device.type == 'mps':
+                torch.mps.synchronize()
+            end_time = time.time()
+            results[f"{mode}_runtime"].append((end_time - start_time) * 1000)  # convert to milliseconds
         img_sr = util.tensor2uint(img_sr, data_range)
 
         # --------------------------------
@@ -175,7 +189,14 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
         # --- Save Restored Images ---
         # util.imsave(img_sr, os.path.join(save_path, img_name+ext))
 
-    results[f"{mode}_memory"] = torch.cuda.max_memory_allocated(torch.cuda.current_device()) / 1024 ** 2
+    # Get memory usage based on device type
+    if device.type == 'cuda':
+        results[f"{mode}_memory"] = torch.cuda.max_memory_allocated(torch.cuda.current_device()) / 1024 ** 2
+    elif device.type == 'mps':
+        results[f"{mode}_memory"] = torch.mps.current_allocated_memory() / 1024 ** 2
+    else:
+        results[f"{mode}_memory"] = 0  # CPU doesn't track memory this way
+    
     results[f"{mode}_ave_runtime"] = sum(results[f"{mode}_runtime"]) / len(results[f"{mode}_runtime"]) #/ 1000.0
     results[f"{mode}_ave_psnr"] = sum(results[f"{mode}_psnr"]) / len(results[f"{mode}_psnr"])
     if args.ssim:
@@ -197,10 +218,16 @@ def main(args):
     # --------------------------------
     # basic settings
     # --------------------------------
-    torch.cuda.current_device()
-    torch.cuda.empty_cache()
-    torch.backends.cudnn.benchmark = False
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Select best available device: CUDA > MPS > CPU
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        torch.backends.cudnn.benchmark = False
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+
+    logger.info(f"Using device: {device}")
 
     json_dir = os.path.join(os.getcwd(), "results.json")
     if not os.path.exists(json_dir):

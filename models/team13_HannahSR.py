@@ -1,4 +1,5 @@
 import torch
+import gc
 import torch.nn as nn
 import torch.nn.functional as F
 import numbers
@@ -407,7 +408,11 @@ class SparseAttention(nn.Module):
             count_mt[0, 0, i:i + k1, j:j + k2] += 1.
 
         del outs
-        torch.cuda.empty_cache()
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        elif torch.backends.mps.is_available():
+            torch.mps.empty_cache()
         return preds / count_mt
 
 

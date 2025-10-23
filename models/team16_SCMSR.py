@@ -466,9 +466,10 @@ class SCMSR(nn.Module):
         return x
 
 if __name__ == "__main__":
-    model = SCMSR(n_feats=42).cuda()
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+    model = SCMSR(n_feats=42).to(device)
     model.eval()
-    inputs = torch.rand(1, 3, 256, 256).cuda()
+    inputs = torch.rand(1, 3, 256, 256).to(device)
     with torch.no_grad():
         output = model(inputs)
     print(f"Output shape: {output.shape}")

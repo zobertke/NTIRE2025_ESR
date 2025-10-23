@@ -193,7 +193,7 @@ class SPAN(nn.Module):
         self.upsampler = pixelshuffle_block(20, out_channels, upscale_factor=upscale)
 
     def forward(self, x):
-        # x = x.type(torch.HalfTensor).cuda()
+        # x = x.type(torch.HalfTensor).to(device)
         self.mean = self.mean.type_as(x)
         x = (x - self.mean) * self.img_range
         out_feature = self.conv_1(x)

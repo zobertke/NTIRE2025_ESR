@@ -213,13 +213,14 @@ class CASRv016_hybrid_deploy(nn.Module):
         return y
        
 if __name__ == "__main__":
-    x = torch.rand(1,3,384,384).cuda()
+    x = torch.rand(1,3,384,384).to(device)
             
     from fvcore.nn import FlopCountAnalysis, flop_count_table
     import time
-    model = CASRv016_hybrid_deploy(module_nums=8, channel_nums=48, act_type='relu', scale=3, down_scale=1, colors=3).cuda().eval()
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+    model = CASRv016_hybrid_deploy(module_nums=8, channel_nums=48, act_type='relu', scale=3, down_scale=1, colors=3).to(device).eval()
     
-    inputs = (torch.rand(1, 3, 256, 256).cuda(),)
+    inputs = (torch.rand(1, 3, 256, 256).to(device),)
     
     print('Deploy model: ')
     print(flop_count_table(FlopCountAnalysis(model, inputs)))

@@ -1153,7 +1153,7 @@ if __name__ == '__main__':
         convffn_kernel_size=5,
         img_range=1.,
         mlp_ratio=1.,
-        upsampler='pixelshuffledirect').cuda()
+        upsampler='pixelshuffledirect').to(device)
 
     # # Model Size
     # total = sum([param.nelement() for param in model.parameters()])
@@ -1162,8 +1162,8 @@ if __name__ == '__main__':
     # print(trainable_num)
 
     # # Test
-    # _input = torch.randn([2, 3, 64, 64]).cuda()
-    # output = model(_input).cuda()
+    # _input = torch.randn([2, 3, 64, 64]).to(device)
+    # output = model(_input).to(device)
     # print(output.shape)
 
 class MambaIRv2LightModel(MambaIRv2Light):

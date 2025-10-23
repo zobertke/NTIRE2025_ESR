@@ -92,8 +92,9 @@ if __name__== '__main__':
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-    img = torch.randn(1, 3, 256, 256).cuda()
-    model = SAFMN_NTIRE25(dim=40, num_blocks=6, ffn_scale=1.5, upscaling_factor=4).cuda()
+    img = torch.randn(1, 3, 256, 256).to(device)
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+    model = SAFMN_NTIRE25(dim=40, num_blocks=6, ffn_scale=1.5, upscaling_factor=4).to(device)
     print(model)
 
     model.train()

@@ -625,8 +625,8 @@ if __name__ == "__main__":
     # print(f"PartialBSConvU parameters: {total_params}")
 
     # # 创建 CUDA 事件
-    # start_event = torch.cuda.Event(enable_timing=True)
-    # end_event = torch.cuda.Event(enable_timing=True)
+    # start_event = torch.cuda.Event(enable_timing=True) if torch.cuda.is_available() else None
+    # end_event = torch.cuda.Event(enable_timing=True) if torch.cuda.is_available() else None
 
     # # 测试运行时间
     # start_event.record()  # 记录开始时间
@@ -635,7 +635,7 @@ if __name__ == "__main__":
     # end_event.record()   # 记录结束时间
 
     # # 等待事件完成
-    # torch.cuda.synchronize()
+    # if torch.cuda.is_available(): torch.cuda.synchronize()
 
     # # 计算运行时间
     # elapsed_time = start_event.elapsed_time(end_event)  # 返回毫秒

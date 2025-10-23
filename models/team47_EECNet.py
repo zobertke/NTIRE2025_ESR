@@ -55,7 +55,7 @@ class EECNet(nn.Module):
 
         self.tail = nn.Conv2d(dim, out_nc * upscaling_factor * upscaling_factor, 3, 1, 1, bias=True)
         self.pixel_shuffle = nn.PixelShuffle(upscaling_factor)
-        self.cuda()(torch.randn(1, 3, 256, 256).cuda())
+        self.to(device)(torch.randn(1, 3, 256, 256).to(device))
 
     def forward(self, x):
         fea = self.head(x)
@@ -450,7 +450,7 @@ class EEC(nn.Module):
     
         # first step: merge the first 1x1 convolution and the next 3x3 convolution
         merge_k0k1 = F.conv2d(input=k1, weight=k0.permute(1, 0, 2, 3))
-        merge_b0b1 = (b0.view(1, -1, 1, 1) * torch.ones(1, mid_feats, 3, 3)).cuda()
+        merge_b0b1 = (b0.view(1, -1, 1, 1) * torch.ones(1, mid_feats, 3, 3)).to(device)
         merge_b0b1 = F.conv2d(input=merge_b0b1, weight=k1, bias=b1)
 
         # second step: merge the remain 1x1 convolution

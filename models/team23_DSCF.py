@@ -317,10 +317,10 @@ class DSCF(nn.Module):
         
         # 冻结非LoRA参数
         # self.mark_only_lora_as_trainable(bias='none')
-        # self.cuda()(torch.randn(1, 3, 256, 256).cuda())
-        # self.eval().cuda()
-        self.eval().cuda()
-        input_tensor = torch.randn(1, 3, 256, 256).cuda()
+        # self.to(device)(torch.randn(1, 3, 256, 256).to(device))
+        # device = next(self.parameters()).device; self.eval().to(device)
+        device = next(self.parameters()).device; self.eval().to(device)
+        input_tensor = torch.randn(1, 3, 256, 256).to(device)
         output = self(input_tensor)
         # 确保 LoRA 层参数可训练
         # print("可训练参数:")

@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import torch
+import gc
 from torch import nn as nn
 import torch.nn.functional as F
 
@@ -189,7 +190,7 @@ class SPANF(nn.Module):
 
         self.depth_to_space = nn.PixelShuffle(upscale)
 
-        self.cuda()(torch.randn(1, 3, 256, 256).cuda())
+        self.to(device)(torch.randn(1, 3, 256, 256).to(device))
 
     def forward(self, x):
 
@@ -213,15 +214,20 @@ class SPANF(nn.Module):
 if __name__ == "__main__":
     from fvcore.nn import FlopCountAnalysis, flop_count_table
     import time
-    model = SPANF(3, 3, upscale=4, feature_channels=32).cuda()
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+    model = SPANF(3, 3, upscale=4, feature_channels=32).to(device)
     model.eval()
-    inputs = (torch.rand(1, 3, 256, 256).cuda(),)
+    inputs = (torch.rand(1, 3, 256, 256).to(device),)
     print(flop_count_table(FlopCountAnalysis(model, inputs)))
 
     total_time = 0
-    input_x = torch.rand(1, 3, 512, 512).cuda()
+    input_x = torch.rand(1, 3, 512, 512).to(device)
     for i in range(100):
-        torch.cuda.empty_cache()
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        elif torch.backends.mps.is_available():
+            torch.mps.empty_cache()
         sta_time = time.time()
         model(input_x)
         one_time = time.time() - sta_time

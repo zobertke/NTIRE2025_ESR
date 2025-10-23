@@ -470,7 +470,8 @@ class FMDN(nn.Module):
 if __name__ == '__main__':
     import torch
 
-    model = FMDN(num_feat=24, upscale=4).cuda()
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+    model = FMDN(num_feat=24, upscale=4).to(device)
     total_params = sum(p.numel() for p in model.parameters())
     print(f'{total_params:,} total parameters.')
     total_trainable_params = sum(
@@ -487,8 +488,8 @@ if __name__ == '__main__':
     flops = flops / 10 ** 9
     print("{:>16s} : {:<.4f} [G]".format("FLOPs", flops))
 
-    model.cuda()
-    out = model(x.cuda())
+    model.to(device)
+    out = model(x.to(device))
     print(out.shape)
 
     iterations = 100  # 重复计算的轮次
@@ -497,7 +498,7 @@ if __name__ == '__main__':
     model.to(device)
 
     random_input = x.to(device)
-    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+    starter, ender = torch.cuda.Event(enable_timing=True) if torch.cuda.is_available() else None, torch.cuda.Event(enable_timing=True) if torch.cuda.is_available() else None
 
     # GPU预热
     for _ in range(50):
@@ -512,7 +513,7 @@ if __name__ == '__main__':
             _ = model(random_input)
             ender.record()
             # 同步GPU时间
-            torch.cuda.synchronize()
+            if torch.cuda.is_available(): torch.cuda.synchronize()
             curr_time = starter.elapsed_time(ender)  # 计算时间
             times[iter] = curr_time
             # print(curr_time)
@@ -520,7 +521,7 @@ if __name__ == '__main__':
     mean_time = times.mean().item()
     print("Inference time: {:.6f}, FPS: {} ".format(mean_time, 1000 / mean_time))
 
-    print('最大显存', torch.cuda.max_memory_allocated(torch.cuda.current_device()) / 1024 ** 2)
+    print('最大显存', torch.cuda.max_memory_allocated(torch.cuda.current_device()) if torch.cuda.is_available() else 0 / 1024 ** 2)
 
     from fvcore.nn import FlopCountAnalysis
 
