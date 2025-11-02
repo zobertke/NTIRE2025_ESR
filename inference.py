@@ -9,9 +9,10 @@ from io import BytesIO
 from PIL import Image
 import cv2
 from utils import utils_image as util
+from utils import utils_logger
 import numpy as np
 
-def select_model(args, device):
+def select_model(model_id, device):
     """
     Load and return the specified model for inference
     
@@ -27,7 +28,6 @@ def select_model(args, device):
     """
     # Model ID is assigned according to the order of the submissions.
     # Different networks are trained with input range of either [0,1] or [0,255]. The range is determined manually.
-    model_id = args.model_id
     
     if model_id == 0:
         # Baseline: The 1st Place of the `Overall Performance`` of the NTIRE 2023 Efficient SR Challenge 
@@ -366,7 +366,16 @@ def select_model(args, device):
     
     return model, name, data_range, tile
 
-def enhance(img, device='cuda', scale = 4, model=31, outscale=None):
+def enhance(img, device='cuda', scale = 4, model_id=31, outscale=None):
+
+    # --------------------------------
+    # load model
+    # --------------------------------
+    model, model_name, data_range, tile = select_model(model_id, device)
+
+    # --------------------------------
+    # read image
+    # --------------------------------
     h_input, w_input = img.shape[0:2]
     # img: numpy
     img = img.astype(np.float32)
@@ -400,28 +409,16 @@ def enhance(img, device='cuda', scale = 4, model=31, outscale=None):
     # (2) img_sr
     # --------------------------------
     if device.type == 'cuda':  
-        img_sr = forward(img_lr, model, tile)
+        output_img = forward(img, model, tile, scale = scale)
         torch.cuda.synchronize()
-        results[f"{mode}_runtime"].append(start.elapsed_time(end))  # milliseconds
     else:
-        start_time = time.time()
-        img_sr = forward(img_lr, model, tile)
+        output_img = forward(img, model, tile, scale = scale)
         if device.type == 'mps':
             torch.mps.synchronize()
-        end_time = time.time()
-        results[f"{mode}_runtime"].append((end_time - start_time) * 1000)  # convert to milliseconds
-    img_sr = util.tensor2uint(img_sr, data_range)
+    output_img = util.tensor2uint(output_img, data_range)
 
-    # --------------------------------
-    # (3) img_hr
-    # --------------------------------
-    img_hr = util.imread_uint(img_hr, n_channels=3)
-    img_hr = img_hr.squeeze()
-    img_hr = util.modcrop(img_hr, sf)
+    #util.imsave(output_img, os.path.join(save_path, img_name+ext))
 
-  
-    output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
-    output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
     if img_mode == 'L':
         output_img = cv2.cvtColor(output_img, cv2.COLOR_BGR2GRAY)
 
@@ -436,9 +433,9 @@ def enhance(img, device='cuda', scale = 4, model=31, outscale=None):
 
     # ------------------------------ return ------------------------------ #
     if max_range == 65535:  # 16-bit image
-        output = (output_img * 65535.0).round().astype(np.uint16)
-    else:
-        output = (output_img * 255.0).round().astype(np.uint8)
+        output = (output_img / 255.0 * 65535.0).round().astype(np.uint16)
+    # else:
+    #     output = (output_img * 255.0).round().astype(np.uint8)
 
     if outscale is not None and outscale != scale:
         output = cv2.resize(
@@ -449,36 +446,6 @@ def enhance(img, device='cuda', scale = 4, model=31, outscale=None):
 
     return output, img_mode
 
-
-# Assuming you receive base64_image_string from your REST request
-def preprocess_base64_image(base64_string, data_range, device):
-    """
-    Convert base64 encoded image to tensor ready for model inference
-    
-    Args:
-        base64_string: Base64 encoded PNG image string
-        data_range: Normalization range (typically 1.0 or 255.0)
-        device: torch device (cuda/mps/cpu)
-    
-    Returns:
-        img_tensor: Preprocessed image tensor on device
-    """
-    # Decode base64 string to bytes
-    image_bytes = base64.b64decode(base64_string)
-    
-    # Open image from bytes
-    image = Image.open(BytesIO(image_bytes)).convert("RGB")
-    
-    # Convert PIL Image to numpy array (uint8, HWC, [0, 255], RGB)
-    img_np = np.array(image)
-    
-    # Convert to tensor using the existing utility function
-    img_tensor = util.uint2tensor4(img_np, data_range)
-    
-    # Move to device
-    img_tensor = img_tensor.to(device)
-    
-    return img_tensor
 
 def forward(img_lq, model, tile=None, tile_overlap=32, scale=4):
     """

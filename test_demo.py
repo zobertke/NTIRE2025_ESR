@@ -176,7 +176,7 @@ def main(args):
     # --------------------------------
     # load model
     # --------------------------------
-    model, model_name, data_range, tile = select_model(args, device)
+    model, model_name, data_range, tile = select_model(args.model_id, device)
     logger.info(model_name)
 
     # if model not in results:
